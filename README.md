@@ -109,100 +109,13 @@ change.md
 - 管理goroutine生命周期的指导.
 -->
 
-## [uber-go/guide](https://github.com/uber-go/guide) 的中文翻译
-
-## [English](https://github.com/uber-go/guide/blob/master/style.md)
-
 ## Uber Go 语言编码规范
 
  [Uber](https://www.uber.com/) 是一家美国硅谷的科技公司，也是 Go 语言的早期 adopter。其开源了很多 golang 项目，诸如被 Gopher 圈熟知的 [zap](https://github.com/uber-go/zap)、[jaeger](https://github.com/jaegertracing/jaeger) 等。2018 年年末 Uber 将内部的 [Go 风格规范](https://github.com/uber-go/guide) 开源到 GitHub，经过一年的积累和更新，该规范已经初具规模，并受到广大 Gopher 的关注。本文是该规范的中文版本。本版本会根据原版实时更新。
 
  ## 版本
 
-  - 当前更新版本：2022-10-19 版本地址：[commit:#158](https://github.com/uber-go/guide/commit/4478e672bddf9d4f7ca4a561ab0779e08e469577)
-  - 如果您发现任何更新、问题或改进，请随时 fork 和 PR
-  - Please feel free to fork and PR if you find any updates, issues or improvement.
-
-## 目录
-
-- [uber-go/guide 的中文翻译](#uber-goguide-的中文翻译)
-- [English](#english)
-- [Uber Go 语言编码规范](#uber-go-语言编码规范)
-- [版本](#版本)
-- [目录](#目录)
-- [介绍](#介绍)
-- [指导原则](#指导原则)
-  - [指向 interface 的指针](#指向-interface-的指针)
-  - [Interface 合理性验证](#interface-合理性验证)
-  - [接收器 (receiver) 与接口](#接收器-receiver-与接口)
-  - [零值 Mutex 是有效的](#零值-mutex-是有效的)
-  - [在边界处拷贝 Slices 和 Maps](#在边界处拷贝-slices-和-maps)
-    - [接收 Slices 和 Maps](#接收-slices-和-maps)
-    - [返回 slices 或 maps](#返回-slices-或-maps)
-  - [使用 defer 释放资源](#使用-defer-释放资源)
-  - [Channel 的 size 要么是 1，要么是无缓冲的](#channel-的-size-要么是-1要么是无缓冲的)
-  - [枚举从 1 开始](#枚举从-1-开始)
-  - [使用 time 处理时间](#使用-time-处理时间)
-    - [使用 `time.Time` 表达瞬时时间](#使用-timetime-表达瞬时时间)
-    - [使用 `time.Duration` 表达时间段](#使用-timeduration-表达时间段)
-    - [对外部系统使用 `time.Time` 和 `time.Duration`](#对外部系统使用-timetime-和-timeduration)
-  - [Errors](#errors)
-    - [错误类型](#错误类型)
-    - [错误包装](#错误包装)
-    - [错误命名](#错误命名)
-  - [处理断言失败](#处理断言失败)
-  - [不要使用 panic](#不要使用-panic)
-  - [使用 go.uber.org/atomic](#使用-gouberorgatomic)
-  - [避免可变全局变量](#避免可变全局变量)
-  - [避免在公共结构中嵌入类型](#避免在公共结构中嵌入类型)
-  - [避免使用内置名称](#避免使用内置名称)
-  - [避免使用 `init()`](#避免使用-init)
-  - [追加时优先指定切片容量](#追加时优先指定切片容量)
-  - [主函数退出方式 (Exit)](#主函数退出方式-exit)
-    - [一次性退出](#一次性退出)
-  - [在序列化结构中使用字段标记](#在序列化结构中使用字段标记)
-  - [不要一劳永逸地使用 goroutine](#不要一劳永逸地使用-goroutine)
-    - [等待 goroutines 退出](#等待-goroutines-退出)
-    - [不要在 `init()` 使用 goroutines](#不要在-init-使用-goroutines)
-- [性能](#性能)
-  - [优先使用 strconv 而不是 fmt](#优先使用-strconv-而不是-fmt)
-  - [避免字符串到字节的转换](#避免字符串到字节的转换)
-  - [指定容器容量](#指定容器容量)
-    - [指定 Map 容量提示](#指定-map-容量提示)
-    - [指定切片容量](#指定切片容量)
-- [规范](#规范)
-  - [避免过长的行](#避免过长的行)
-  - [一致性](#一致性)
-  - [相似的声明放在一组](#相似的声明放在一组)
-  - [import 分组](#import-分组)
-  - [包名](#包名)
-  - [函数名](#函数名)
-  - [导入别名](#导入别名)
-  - [函数分组与顺序](#函数分组与顺序)
-  - [减少嵌套](#减少嵌套)
-  - [不必要的 else](#不必要的-else)
-  - [顶层变量声明](#顶层变量声明)
-  - [对于未导出的顶层常量和变量，使用_作为前缀](#对于未导出的顶层常量和变量使用_作为前缀)
-  - [结构体中的嵌入](#结构体中的嵌入)
-  - [本地变量声明](#本地变量声明)
-  - [nil 是一个有效的 slice](#nil-是一个有效的-slice)
-  - [缩小变量作用域](#缩小变量作用域)
-  - [避免参数语义不明确 (Avoid Naked Parameters)](#避免参数语义不明确-avoid-naked-parameters)
-  - [使用原始字符串字面值，避免转义](#使用原始字符串字面值避免转义)
-  - [初始化结构体](#初始化结构体)
-    - [使用字段名初始化结构](#使用字段名初始化结构)
-    - [省略结构中的零值字段](#省略结构中的零值字段)
-    - [对零值结构使用 `var`](#对零值结构使用-var)
-    - [初始化 Struct 引用](#初始化-struct-引用)
-  - [初始化 Maps](#初始化-maps)
-  - [字符串 string format](#字符串-string-format)
-  - [命名 Printf 样式的函数](#命名-printf-样式的函数)
-- [编程模式](#编程模式)
-  - [表驱动测试](#表驱动测试)
-  - [功能选项](#功能选项)
-- [Linting](#linting)
-  - [Lint Runners](#lint-runners)
-- [Stargazers over time](#stargazers-over-time)
+当前更新版本：2022-10-19 版本地址：[commit:#158](https://github.com/uber-go/guide/commit/4478e672bddf9d4f7ca4a561ab0779e08e469577)
 
 ## 介绍
 
@@ -235,7 +148,9 @@ change.md
 
 ### 指向 interface 的指针
 
-您几乎不需要指向接口类型的指针。您应该将接口作为值进行传递，在这样的传递过程中，实质上传递的底层数据仍然可以是指针。
+您几乎不需要指向接口类型的指针。
+
+您应该将接口作为值进行传递，在这样的传递过程中，实质上传递的底层数据仍然可以是指针。
 
 接口实质上在底层用两个字段表示：
 
@@ -267,51 +182,41 @@ var f2 F = &S2{}
 
 在编译时验证接口的符合性。这包括：
 
-- 将实现特定接口的导出类型作为接口 API 的一部分进行检查
-- 实现同一接口的 (导出和非导出) 类型属于实现类型的集合
+- 将实现特定接口的导出类型，作为接口 API 的一部分进行检查
+- 实现同一接口的 (导出和非导出) 类型，属于实现类型的集合
 - 任何违反接口合理性检查的场景，都会终止编译，并通知给用户
 
 补充：上面 3 条是编译器对接口的检查机制，
 大体意思是错误使用接口会在编译期报错。
 所以可以利用这个机制让部分问题在编译期暴露。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
-
 ```go
+// Bad
 // 如果 Handler 没有实现 http.Handler，会在运行时报错
-type Handler struct {
-  // ...
+type Handler struct {  
+    ...
 }
 func (h *Handler) ServeHTTP(
-  w http.ResponseWriter,
-  r *http.Request,
+    w http.ResponseWriter,
+    r *http.Request
 ) {
-  ...
+    ...
 }
-```
 
-</td><td>
-
-```go
+// Good
 type Handler struct {
-  // ...
+    ...
 }
-// 用于触发编译期的接口的合理性检查机制
+// 用于触发编译器的接口的合理性检查机制
 // 如果 Handler 没有实现 http.Handler，会在编译期报错
 var _ http.Handler = (*Handler)(nil)
 func (h *Handler) ServeHTTP(
-  w http.ResponseWriter,
-  r *http.Request,
-) {
-  // ...
+    w http.ResponseWriter,
+    r *http.Request) 
+{
+    ...
 }
 ```
-
-</td></tr>
-</tbody></table>
 
 如果 `*Handler` 与 `http.Handler` 的接口不匹配，
 那么语句 `var _ http.Handler = (*Handler)(nil)` 将无法编译通过。
@@ -1094,8 +999,8 @@ x: y: new store: the error
 
 另见 [不要只检查错误，优雅地处理它们]。
 
-  [`"pkg/errors".Cause`]: https://godoc.org/github.com/pkg/errors#Cause
-  [不要只检查错误，优雅地处理它们]: https://dave.cheney.net/2016/04/27/dont-just-check-errors-handle-them-gracefully
+[`"pkg/errors".Cause`]: https://godoc.org/github.com/pkg/errors#Cause
+[不要只检查错误，优雅地处理它们]: https://dave.cheney.net/2016/04/27/dont-just-check-errors-handle-them-gracefully
 
 #### 错误命名
 
@@ -1143,7 +1048,7 @@ func (e *resolveError) Error() string {
 
 [类型断言] 将会在检测到不正确的类型时，以单一返回值形式返回 panic。 因此，请始终使用“逗号 ok”习语。
 
-  [类型断言]: https://golang.org/ref/spec#Type_assertions
+[类型断言]: https://golang.org/ref/spec#Type_assertions
 
 <table>
 <thead><tr><th>Bad</th><th>Good</th></tr></thead>
@@ -1713,8 +1618,8 @@ BenchmarkGood-4   100000000    0.21s
 
 Go 程序使用 [`os.Exit`] 或者 [`log.Fatal*`] 立即退出 (使用`panic`不是退出程序的好方法，请 [不要使用 panic](#不要使用-panic)。)
 
-  [`os.Exit`]: https://golang.org/pkg/os/#Exit
-  [`log.Fatal*`]: https://golang.org/pkg/log/#Fatal
+[`os.Exit`]: https://golang.org/pkg/os/#Exit
+[`log.Fatal*`]: https://golang.org/pkg/log/#Fatal
 
 **仅在`main()`** 中调用其中一个 `os.Exit` 或者 `log.Fatal*`。所有其他函数应将错误返回到信号失败中。
 
