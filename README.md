@@ -333,37 +333,25 @@ i = s2Ptr
 
 零值 `sync.Mutex` 和 `sync.RWMutex` 是有效的。所以指向 mutex 的指针基本是不必要的。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
-
 ```go
+// Bad
 mu := new(sync.Mutex)
-mu.Lock()
-```
+mu.Lock
 
-</td><td>
-
-```go
+// Good
 var mu sync.Mutex
 mu.Lock()
 ```
 
-</td></tr>
-</tbody></table>
+如果你使用结构体指针，mutex 应该作为结构体的非指针字段。
 
-如果你使用结构体指针，mutex 应该作为结构体的非指针字段。即使该结构体不被导出，也不要直接把 mutex 嵌入到结构体中。
+另外即使该结构体不被导出，也不要直接把 mutex 嵌入到结构体中。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 type SMap struct {
   sync.Mutex
-
   data map[string]string
 }
 
@@ -374,16 +362,14 @@ func NewSMap() *SMap {
 }
 
 func (m *SMap) Get(k string) string {
+  // `Mutex` 字段， `Lock` 和 `Unlock` 方法是 `SMap` 导出的 API 中不刻意说明的一部分。  
   m.Lock()
   defer m.Unlock()
 
   return m.data[k]
 }
-```
 
-</td><td>
-
-```go
+// Good
 type SMap struct {
   mu sync.Mutex
 
@@ -397,24 +383,13 @@ func NewSMap() *SMap {
 }
 
 func (m *SMap) Get(k string) string {
+  // mutex 及其方法是 `SMap` 的实现细节，对其调用者不可见。  
   m.mu.Lock()
   defer m.mu.Unlock()
 
   return m.data[k]
 }
 ```
-
-</td></tr>
-<tr><td>
-
-`Mutex` 字段， `Lock` 和 `Unlock` 方法是 `SMap` 导出的 API 中不刻意说明的一部分。
-
- </td><td>
-
-mutex 及其方法是 `SMap` 的实现细节，对其调用者不可见。
-
- </td></tr>
- </tbody></table>
 
 ### 在边界处拷贝 Slices 和 Maps
 
