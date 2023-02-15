@@ -180,7 +180,7 @@ var f2 F = &S2{}
 
 ### Interface 合理性验证
 
-在编译时验证接口的符合性。这包括：
+在编译时验证接口的合法性。这包括：
 
 - 将实现特定接口的导出类型，作为接口 API 的一部分进行检查
 - 实现同一接口的 (导出和非导出) 类型，属于实现类型的集合
@@ -362,7 +362,7 @@ func NewSMap() *SMap {
 }
 
 func (m *SMap) Get(k string) string {
-  // `Mutex` 字段， `Lock` 和 `Unlock` 方法是 `SMap` 导出的 API 中不刻意说明的一部分。  
+  // `Mutex` 字段， `Lock` 和 `Unlock` 方法是 `SMap` 导出的 API 中不刻意说明的一部分 
   m.Lock()
   defer m.Unlock()
 
@@ -399,13 +399,9 @@ slices 和 maps 包含了指向底层数据的指针，因此在需要复制它�
 
 请记住，当 map 或 slice 作为函数参数传入时，如果您存储了对它们的引用，则用户可以对其进行修改。
 
-<table>
-<thead><tr><th>Bad</th> <th>Good</th></tr></thead>
-<tbody>
-<tr>
-<td>
 
 ```go
+// Bad
 func (d *Driver) SetTrips(trips []Trip) {
   d.trips = trips
 }
@@ -415,12 +411,8 @@ d1.SetTrips(trips)
 
 // 你是要修改 d1.trips 吗？
 trips[0] = ...
-```
 
-</td>
-<td>
-
-```go
+// Good
 func (d *Driver) SetTrips(trips []Trip) {
   d.trips = make([]Trip, len(trips))
   copy(d.trips, trips)
@@ -433,22 +425,13 @@ d1.SetTrips(trips)
 trips[0] = ...
 ```
 
-</td>
-</tr>
-
-</tbody>
-</table>
-
 #### 返回 slices 或 maps
 
-同样，请注意用户对暴露内部状态的 map 或 slice 的修改。
+同样的，对暴露内部状态的 map 或 slice ，请注意用户对其的修改。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 type Stats struct {
   mu sync.Mutex
 
@@ -467,11 +450,8 @@ func (s *Stats) Snapshot() map[string]int {
 // 因此对 snapshot 的任何访问都将受到数据竞争的影响
 // 影响 stats.counters
 snapshot := stats.Snapshot()
-```
 
-</td><td>
-
-```go
+// Good
 type Stats struct {
   mu sync.Mutex
 
@@ -492,9 +472,6 @@ func (s *Stats) Snapshot() map[string]int {
 // snapshot 现在是一个拷贝
 snapshot := stats.Snapshot()
 ```
-
-</td></tr>
-</tbody></table>
 
 ### 使用 defer 释放资源
 
