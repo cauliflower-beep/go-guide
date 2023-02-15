@@ -477,12 +477,9 @@ snapshot := stats.Snapshot()
 
 使用 defer 释放资源，诸如文件和锁。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 p.Lock()
 if p.count < 10 {
   p.Unlock()
@@ -496,11 +493,8 @@ p.Unlock()
 return newCount
 
 // 当有多个 return 分支时，很容易遗忘 unlock
-```
 
-</td><td>
-
-```go
+// Good
 p.Lock()
 defer p.Unlock()
 
@@ -514,47 +508,43 @@ return p.count
 // 更可读
 ```
 
-</td></tr>
-</tbody></table>
-
-Defer 的开销非常小，只有在您可以证明函数执行时间处于纳秒级的程度时，才应避免这样做。使用 defer 提升可读性是值得的，因为使用它们的成本微不足道。尤其适用于那些不仅仅是简单内存访问的较大的方法，在这些方法中其他计算的资源消耗远超过 `defer`。
+Defer 的开销非常小，只有在您可以证明函数执行时间处于纳秒级的程度时，才应避免这样做。使用 defer 提升可读性是值得的，因为使用它们的成本微不足道。尤其适用于那些不仅仅是简单内存访问的、较大的方法，在这些方法中其他计算的资源消耗远超过 `defer`。
 
 ### Channel 的 size 要么是 1，要么是无缓冲的
 
-channel 通常 size 应为 1 或是无缓冲的。默认情况下，channel 是无缓冲的，其 size 为零。任何其他尺寸都必须经过严格的审查。我们需要考虑如何确定大小，考虑是什么阻止了 channel 在高负载下和阻塞写时的写入，以及当这种情况发生时系统逻辑有哪些变化。(翻译解释：按照原文意思是需要界定通道边界，竞态条件，以及逻辑上下文梳理)
+channel 通常 size 应为 1 或是无缓冲的。默认情况下，channel 是无缓冲的，其 size 为零。任何其他尺寸都必须经过严格的审查。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
+我们需要考虑：
+
+1. 如何确定大小；
+2. 是什么阻止了 channel 在高负载下和阻塞写时的写入，以及当这种情况发生时系统逻辑有哪些变化。
+
+翻译解释：按照原文意思是需要界定通道边界，竞态条件，以及逻辑上下文梳理。
+
 
 ```go
-// 应该足以满足任何情况！
+/*
+	Bad
+	应该足以满足任何情况！
+*/	
 c := make(chan int, 64)
-```
 
-</td><td>
-
-```go
+// Good
 // 大小：1
 c := make(chan int, 1) // 或者
 // 无缓冲 channel，大小为 0
 c := make(chan int)
 ```
 
-</td></tr>
-</tbody></table>
-
 ### 枚举从 1 开始
 
-在 Go 中引入枚举的标准方法是声明一个自定义类型和一个使用了 iota 的 const 组。由于变量的默认值为 0，因此通常应以非零值开头枚举。
+在 Go 中引入枚举的标准方法，是声明一个自定义类型和一个使用了 iota 的 const 组。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
+由于变量的默认值为 0，因此通常应以非零值开头枚举。
+
 
 ```go
+// Bad
 type Operation int
 
 const (
@@ -564,11 +554,8 @@ const (
 )
 
 // Add=0, Subtract=1, Multiply=2
-```
 
-</td><td>
-
-```go
+// Good
 type Operation int
 
 const (
@@ -579,9 +566,6 @@ const (
 
 // Add=1, Subtract=2, Multiply=3
 ```
-
-</td></tr>
-</tbody></table>
 
 在某些情况下，使用零值是有意义的（枚举从零开始），例如，当零值是理想的默认行为时。
 
