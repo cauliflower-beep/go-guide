@@ -719,13 +719,67 @@ type Config struct {
 
 #### 错误类型
 
-声明错误的选项很少。
+声明错误的选项很少：`errors.New`和`fmt.Errorf`
+
 在选择最适合您的用例的选项之前，请考虑以下事项。
 
 - 调用者是否需要匹配错误以便他们可以处理它？
-  如果是，我们必须通过声明顶级错误变量或自定义类型来支持 [`errors.Is`] 或 [`errors.As`] 函数。
+  
+  如果不需要错误匹配，简单处理即可：
+  
+  ```go
+  // 不需要错误匹配
+  // package foo
+  func Open() error {
+    return errors.New("could not open")
+  }
+  
+  // package bar
+  if err := foo.Open(); err != nil {
+    // Can't handle the error.
+    panic("unknown error")
+  }
+  ```
+  
+  如果是，我们必须通过声明顶级错误变量或自定义类型，以支持 [`errors.Is`] 或 [`errors.As`] 函数。
+  
+  通俗来讲就是类似`try catch`，提前定义好不同的标准Error，统一调用可能返回不同的错误。
+  
+  上游调用针对不同类型不同处理。简单的可直接判断类型。
+  
+  ```go
+  // 匹配错误以便分别处理
+  // package foo
+  var (
+      ErrNoPermission = errors.New("has no permission")
+      ErrHasNOFile = errors.New("file does not exist")
+  )
+  func Open(flag int) error {
+      switch flag{
+          case 0:
+          	return ErrNoPermission
+      	case 1:
+          	return ErrHasNOFile
+      }
+  }
+  
+  // package bar
+  if err := foo.Open(); err != nil {
+    if errors.Is(err, foo.ErrNoPermission) {
+      // handle the error
+    } else if errors.Is(err,foo.ErrHasNOFile){
+      // handle the error
+    }else{    
+      panic("unknown error")
+    }
+  }
+  ```
+  
 - 错误消息是否为静态字符串，还是需要上下文信息的动态字符串？
-  如果是静态字符串，我们可以使用 [`errors.New`]，但对于后者，我们必须使用 [`fmt.Errorf`] 或自定义错误类型。
+  如果是静态字符串，我们可以使用 [`errors.New`]；
+  
+  如果是需要上下文信息的动态字符串，必须使用 [`fmt.Errorf`] 或自定义错误类型。
+  
 - 我们是否正在传递由下游函数返回的新错误？
    如果是这样，请参阅[错误包装部分](#错误包装)。
 
@@ -742,88 +796,39 @@ type Config struct {
 [`errors.New`]: https://golang.org/pkg/errors/#New
 [`fmt.Errorf`]: https://golang.org/pkg/fmt/#Errorf
 
-例如，
-使用 [`errors.New`] 表示带有静态字符串的错误。
-如果调用者需要匹配并处理此错误，则将此错误导出为变量以支持将其与 `errors.Is` 匹配。
-
-<table>
-<thead><tr><th>无错误匹配</th><th>错误匹配</th></tr></thead>
-<tbody>
-<tr><td>
-
-```go
-// package foo
-
-func Open() error {
-  return errors.New("could not open")
-}
-
-// package bar
-
-if err := foo.Open(); err != nil {
-  // Can't handle the error.
-  panic("unknown error")
-}
-```
-
-</td><td>
-
-```go
-// package foo
-
-var ErrCouldNotOpen = errors.New("could not open")
-
-func Open() error {
-  return ErrCouldNotOpen
-}
-
-// package bar
-
-if err := foo.Open(); err != nil {
-  if errors.Is(err, foo.ErrCouldNotOpen) {
-    // handle the error
-  } else {
-    panic("unknown error")
-  }
-}
-```
-
-</td></tr>
-</tbody></table>
-
 对于动态字符串的错误，
-如果调用者不需要匹配它，则使用 [`fmt.Errorf`]，
-如果调用者确实需要匹配它，则自定义 `error`。
-
-<table>
-<thead><tr><th>无错误匹配</th><th>错误匹配</th></tr></thead>
-<tbody>
-<tr><td>
+如果调用者不需要匹配它，则使用 [`fmt.Errorf`]简单处理即可：
 
 ```go
+// 不需要匹配的动态字符串的错误
 // package foo
-
 func Open(file string) error {
   return fmt.Errorf("file %q not found", file)
 }
 
 // package bar
-
 if err := foo.Open("testfile.txt"); err != nil {
   // Can't handle the error.
   panic("unknown error")
 }
 ```
 
-</td><td>
+如果调用者确实需要匹配它，则需要自定义 `error`。
+
 
 ```go
+// 需要匹配的动态字符串错误
 // package foo
-
 type NotFoundError struct {
   File string
 }
 
+/*
+	自定义error需要实现如下接口:
+	type error interface {
+    	Error() string
+	}
+*/
 func (e *NotFoundError) Error() string {
   return fmt.Sprintf("file %q not found", e.File)
 }
@@ -832,9 +837,7 @@ func Open(file string) error {
   return &NotFoundError{File: file}
 }
 
-
 // package bar
-
 if err := foo.Open("testfile.txt"); err != nil {
   var notFound *NotFoundError
   if errors.As(err, &notFound) {
@@ -844,9 +847,6 @@ if err := foo.Open("testfile.txt"); err != nil {
   }
 }
 ```
-
-</td></tr>
-</tbody></table>
 
 请注意，如果您从包中导出错误变量或类型，
 它们将成为包的公共 API 的一部分。
@@ -878,43 +878,24 @@ if err := foo.Open("testfile.txt"); err != nil {
 
 在为返回的错误添加上下文时，通过避免使用"failed to"之类的短语来保持上下文简洁，当错误通过堆栈向上渗透时，它会一层一层被堆积起来：
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 s, err := store.New()
 if err != nil {
     return fmt.Errorf(
         "failed to create new store: %w", err)
+    // failed to x: failed to y: failed to create new store: the error
 }
-```
 
-</td><td>
-
-```go
+// Good
 s, err := store.New()
 if err != nil {
     return fmt.Errorf(
         "new store: %w", err)
+    // x: y: new store: the error
 }
 ```
-
-</td></tr><tr><td>
-
-```
-failed to x: failed to y: failed to create new store: the error
-```
-
-</td><td>
-
-```
-x: y: new store: the error
-```
-
-</td></tr>
-</tbody></table>
 
 然而，一旦错误被发送到另一个系统，应该清楚消息是一个错误（例如`err` 标签或日志中的"Failed"前缀）。
 
