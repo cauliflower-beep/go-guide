@@ -953,42 +953,33 @@ func (e *resolveError) Error() string {
 
 [类型断言]: https://golang.org/ref/spec#Type_assertions
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 t := i.(string)
-```
 
-</td><td>
-
-```go
+// Good
 t, ok := i.(string)
 if !ok {
   // 优雅地处理错误
 }
 ```
 
-</td></tr>
-</tbody></table>
-
-<!-- TODO: There are a few situations where the single assignment form is
-fine. -->
-
 ### 不要使用 panic
 
-在生产环境中运行的代码必须避免出现 panic。panic 是 [级联失败] 的主要根源 。如果发生错误，该函数必须返回错误，并允许调用方决定如何处理它。
+在生产环境中运行的代码，必须避免出现 panic。
+
+了解原因之前，先看看什么是级联失效：
+
+> 网络中，一个或少数几个节点或连线的失效，会通过节点之间的耦合关系引发其他节点也发生失效，进而产生级联效应，最终导致相当一部分节点甚至整个网络的崩溃，这种现象就称为级联失效，有时也形象称之为“雪崩”
+
+panic 是 [级联失败] 的主要根源 。如果发生错误，该函数必须返回错误，并允许调用方决定如何处理它。
 
 [级联失败]: https://en.wikipedia.org/wiki/Cascading_failure
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 func run(args []string) {
   if len(args) == 0 {
     panic("an argument is required")
@@ -999,11 +990,8 @@ func run(args []string) {
 func main() {
   run(os.Args[1:])
 }
-```
 
-</td><td>
-
-```go
+// Good
 func run(args []string) error {
   if len(args) == 0 {
     return errors.New("an argument is required")
@@ -1020,10 +1008,9 @@ func main() {
 }
 ```
 
-</td></tr>
-</tbody></table>
+panic/recover 不是错误处理策略。仅当发生不可恢复的事情（例如：nil 引用）时，程序才必须 panic。
 
-panic/recover 不是错误处理策略。仅当发生不可恢复的事情（例如：nil 引用）时，程序才必须 panic。程序初始化是一个例外：程序启动时应使程序中止的不良情况可能会引起 panic。
+程序初始化是一个例外：程序启动时，应使程序中止的不良情况可能会引起 panic。
 
 ```go
 var _statusTemplate = template.Must(template.New("name").Parse("_statusHTML"))
@@ -1031,23 +1018,17 @@ var _statusTemplate = template.Must(template.New("name").Parse("_statusHTML"))
 
 即使在测试代码中，也优先使用`t.Fatal`或者`t.FailNow`而不是 panic 来确保失败被标记。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 // func TestFoo(t *testing.T)
 
 f, err := os.CreateTemp("", "test")
 if err != nil {
   panic("failed to set up test")
 }
-```
 
-</td><td>
-
-```go
+// Good
 // func TestFoo(t *testing.T)
 
 f, err := os.CreateTemp("", "test")
@@ -1055,9 +1036,6 @@ if err != nil {
   t.Fatal("failed to set up test")
 }
 ```
-
-</td></tr>
-</tbody></table>
 
 <!-- TODO: Explain how to use _test packages. -->
 
