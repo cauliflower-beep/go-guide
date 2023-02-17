@@ -1048,12 +1048,9 @@ if err != nil {
 [go.uber.org/atomic]: https://godoc.org/go.uber.org/atomic
 [sync/atomic]: https://golang.org/pkg/sync/atomic/
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 type foo struct {
   running int32  // atomic
 }
@@ -1069,11 +1066,8 @@ func (f* foo) start() {
 func (f *foo) isRunning() bool {
   return f.running == 1  // race!
 }
-```
 
-</td><td>
-
-```go
+// Good
 type foo struct {
   running atomic.Bool
 }
@@ -1091,25 +1085,29 @@ func (f *foo) isRunning() bool {
 }
 ```
 
-</td></tr>
-</tbody></table>
-
 ### 避免可变全局变量
 
 使用选择依赖注入方式避免改变全局变量。
-既适用于函数指针又适用于其他值类型
+既适用于函数指针又适用于其他值类型。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 // sign.go
 var _timeNow = time.Now
 func sign(msg string) string {
   now := _timeNow()
   return signWithTime(msg, now)
+}
+
+// sign_test.go
+func TestSign(t *testing.T) {
+  oldTimeNow := _timeNow
+  _timeNow = func() time.Time {
+    return someFixedTime
+  }
+  defer func() { _timeNow = oldTimeNow }()
+  assert.Equal(t, want, sign(give))
 }
 ```
 
@@ -1134,15 +1132,7 @@ func (s *signer) Sign(msg string) string {
 <tr><td>
 
 ```go
-// sign_test.go
-func TestSign(t *testing.T) {
-  oldTimeNow := _timeNow
-  _timeNow = func() time.Time {
-    return someFixedTime
-  }
-  defer func() { _timeNow = oldTimeNow }()
-  assert.Equal(t, want, sign(give))
-}
+
 ```
 
 </td><td>
