@@ -1088,7 +1088,76 @@ func (f *foo) isRunning() bool {
 ### 避免可变全局变量
 
 使用选择依赖注入方式避免改变全局变量。
+
+> 依赖注入：将实例变量传入到一个对象中去。
+>
+> why? 让开发者从对项目中大量依赖的创建和管理中解脱出来。
+
 既适用于函数指针又适用于其他值类型。
+
+#### 依赖注入
+
+> 需求不断堆积，代码逻辑越来越复杂，依赖越来越多，该如何组织代码结构，保持各个模块解耦?
+
+#### 定义
+
+在软件工程中，依赖注入(dependency injection)的意思为，给予调用方它所需要的事物。
+
+- “依赖”是指可被方法调用的事物。依赖注入形式下，调用方不再直接使用“依赖”，取而代之是“注入” 。
+- “注入”是指将“依赖”传递给调用方的过程。在“注入”之后，调用方才会调用该“依赖”。
+- 传递依赖给调用方，而不是让调用方直接获得依赖，这个是该设计的根本需求。
+
+简而言之，外部的依赖不应该由自身创建，而是应该从外部将依赖的对象注入。 例如：
+
+```go
+type Server struct{
+    Conf *Config // 依赖 Config
+}
+func NewServer()*Server{
+    return &{
+        Conf: config.New()
+    }
+}
+```
+
+上面的例子中，`Server` 依赖 `Config`，在Server的初始化中直接使用了config.New方法；如果后面config.New增加了参数，那我们还需要到Server的初始化方法中修改Conf，这实际上违背了**开放封闭原则**。 
+
+> 开放封闭原则（[OCP](https://baike.baidu.com/item/OCP/10693756?fromModule=lemma_inlink)，Open Closed Principle）是所有[面向对象](https://baike.baidu.com/item/面向对象/2262089?fromModule=lemma_inlink)原则的核心。软件设计本身所追求的目标就是封装变化、降低耦合，而开放封闭原则正是对这一目标的最直接体现。
+>
+> 关于开放封闭原则，其`核心思想`是：
+>
+> 软件实体应该是可扩展，而不可修改的。也就是说，对扩展是开放的，而对修改是封闭的。
+>
+> 因此，开放封闭原则主要体现在两个方面：
+>
+> 对扩展开放，意味着有新的需求或变化时，可以对现有代码进行扩展，以适应新的情况。
+>
+> 对修改封闭，意味着类一旦设计完成，就可以独立完成其工作，而不要对类进行任何修改。
+
+具体说来，上述这段的设计中存在几个明显的问题：
+
+- 耦合性高：Server 承担了 Config 的初始化，如果 Config的初始化过程发生改变，我们需要一并修改Server；
+- 扩展性差：一个Server的实例化过程只能构造自己的Config，它不能使用其它已经实例化好的Config；
+- 不利于单元测试：在完成单元测试的时候，我们无法测试不同类型的Config对于Server的影响。
+
+为此我们可以修改成下面这样：
+
+```go
+type Server struct{
+    Conf *Config // 依赖 Config
+}
+func NewServer(c *Config)*Server{
+    return &{
+        Conf: c
+    }
+}
+```
+
+这样，我们可以在外部对Config进行初始化然后注入到Server中。上述修改完成后，耦合性和扩展性的问题便解决掉了。
+
+对于Server来说，接收从外部传入的Config，其不关心Config的初始化的过程；另外，多个Server之间可共用一份Config，并且可以做到随意替换；此外，测试的时候我们可以较为轻松对关键部位进行替换。
+
+[谈谈 golang 下的依赖注入 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/467874556)
 
 
 ```go
@@ -1109,11 +1178,8 @@ func TestSign(t *testing.T) {
   defer func() { _timeNow = oldTimeNow }()
   assert.Equal(t, want, sign(give))
 }
-```
 
-</td><td>
-
-```go
+// good
 // sign.go
 type signer struct {
   now func() time.Time
@@ -1127,17 +1193,6 @@ func (s *signer) Sign(msg string) string {
   now := s.now()
   return signWithTime(msg, now)
 }
-```
-</td></tr>
-<tr><td>
-
-```go
-
-```
-
-</td><td>
-
-```go
 // sign_test.go
 func TestSigner(t *testing.T) {
   s := newSigner()
@@ -1147,9 +1202,6 @@ func TestSigner(t *testing.T) {
   assert.Equal(t, want, s.Sign(give))
 }
 ```
-
-</td></tr>
-</tbody></table>
 
 ### 避免在公共结构中嵌入类型
 
