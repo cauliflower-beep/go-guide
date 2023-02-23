@@ -1591,7 +1591,7 @@ go vet -vettool=$(which bodyclose) github.com/timakin/go_api/...
 尽可能避免使用`init()`。当`init()`是不可避免或可取的，代码应先尝试：
 
 1. 无论程序环境或调用如何，都要完全确定。
-2. 避免依赖于其他`init()`函数的顺序或副作用。虽然`init()`顺序是明确的，但代码可以更改，
+2. 避免受到其他`init()`函数的顺序或运行结果的影响。虽然`init()`顺序是明确的，但代码可以更改，
 因此`init()`函数之间的关系可能会使代码变得脆弱和容易出错。
 3. 避免访问或操作全局或环境状态，如机器信息、环境变量、工作目录、程序参数/输入等。
 4. 避免`I/O`，包括文件系统、网络和系统调用。
@@ -1600,12 +1600,9 @@ go vet -vettool=$(which bodyclose) github.com/timakin/go_api/...
 或者作为`main()`本身的一部分写入。特别是，打算由其他程序使用的库应该特别注意完全确定性，
 而不是执行“init magic”
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 type Foo struct {
     // ...
 }
@@ -1615,27 +1612,7 @@ func init() {
         // ...
     }
 }
-```
 
-</td><td>
-
-```go
-var _defaultFoo = Foo{
-    // ...
-}
-// or，为了更好的可测试性：
-var _defaultFoo = defaultFoo()
-func defaultFoo() Foo {
-    return Foo{
-        // ...
-    }
-}
-```
-
-</td></tr>
-<tr><td>
-
-```go
 type Config struct {
     // ...
 }
@@ -1649,11 +1626,19 @@ func init() {
     )
     yaml.Unmarshal(raw, &_config)
 }
-```
 
-</td><td>
+// Good
+var _defaultFoo = Foo{
+    // ...
+}
+// or，为了更好的可测试性：
+var _defaultFoo = defaultFoo()
+func defaultFoo() Foo {
+    return Foo{
+        // ...
+    }
+}
 
-```go
 type Config struct {
     // ...
 }
@@ -1669,9 +1654,6 @@ func loadConfig() Config {
     return config
 }
 ```
-
-</td></tr>
-</tbody></table>
 
 考虑到上述情况，在某些情况下，`init()`可能更可取或是必要的，可能包括：
 
