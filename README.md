@@ -1467,22 +1467,17 @@ func (l *ConcreteList) Remove(e Entity) {
 
 ### 避免使用内置名称
 
-Go [语言规范] 概述了几个内置的，
-不应在 Go 项目中使用的 [预先声明的标识符]。
+Go [语言规范] 概述了几个内置的、不应在 Go 项目中使用的 [预先声明的标识符]。
 
-根据上下文的不同，将这些标识符作为名称重复使用，
-将在当前作用域（或任何嵌套作用域）中隐藏原始标识符，或者混淆代码。
+根据上下文的不同，将这些标识符作为名称重复使用，将在当前作用域（或任何嵌套作用域）中隐藏原始标识符，或者混淆代码。
 在最好的情况下，编译器会报错；在最坏的情况下，这样的代码可能会引入潜在的、难以恢复的错误。
 
 [语言规范]: https://golang.org/ref/spec
 [预先声明的标识符]: https://golang.org/ref/spec#Predeclared_identifiers
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 var error string
 // `error` 作用域隐式覆盖
 
@@ -1491,25 +1486,7 @@ var error string
 func handleErrorMessage(error string) {
     // `error` 作用域隐式覆盖
 }
-```
 
-</td><td>
-
-```go
-var errorMessage string
-// `error` 指向内置的非覆盖
-
-// or
-
-func handleErrorMessage(msg string) {
-    // `error` 指向内置的非覆盖
-}
-```
-
-</td></tr>
-<tr><td>
-
-```go
 type Foo struct {
     // 虽然这些字段在技术上不构成阴影，但`error`或`string`字符串的重映射现在是不明确的。
     error  error
@@ -1525,11 +1502,18 @@ func (f Foo) String() string {
     // `string` and `f.string` 在视觉上是相似的
     return f.string
 }
-```
+/*----------------------------------------*/
 
-</td><td>
+// Good
+var errorMessage string
+// `error` 指向内置的非覆盖
 
-```go
+// or
+
+func handleErrorMessage(msg string) {
+    // `error` 指向内置的非覆盖
+}
+
 type Foo struct {
     // `error` and `string` 现在是明确的。
     err error
@@ -1544,11 +1528,63 @@ func (f Foo) String() string {
     return f.str
 }
 ```
-</td></tr>
-</tbody></table>
 
 注意，编译器在使用预先分隔的标识符时不会生成错误，
 但是诸如`go vet`之类的工具会正确地指出这些和其他情况下的隐式问题。
+
+#### vet
+
+vet是 golang 中自带的静态分析工具，可以让我们检查出 package 或者源码文件中一些隐含的错误。
+
+可以使用 go help vet 来了解一下它的简介，输入 go doc cmd/vet 可以查看详细一点的文档。
+
+#### 为什么使用vet？
+
+比如下面这段程序
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    test()
+}
+
+func test() {
+    str := "Hello"
+    fmt.Printf("%d World", str)
+}
+```
+
+编译是可以通过的。但是很明显，我们在 %d 的位置是要打印一个字符串，应该用 %s，这时候如果用 vet 扫描一下就可以避免这个问题
+
+分析某个文件：
+
+```go
+go vet floder/main.go
+```
+
+分析某个包：
+
+```go
+go vet floder/*.go
+go vet floder/...
+```
+
+也可以分析多个包和多个文件，用空格隔开即可。
+
+另外，go 还有很多质量工具，最常用的就是 goimports(来检测引用包的问题)，gofmt(代码格式问题)，golangci-lint(语法检测)，还有一些其他第三方的质量检测工具，帮助我们完善代码：[https://github.com/analysis-tools-dev/static-analysis#go](https://links.jianshu.com/go?to=https%3A%2F%2Fgithub.com%2Fanalysis-tools-dev%2Fstatic-analysis%23go)
+
+比如 [bodyclose](https://links.jianshu.com/go?to=https%3A%2F%2Fgithub.com%2Ftimakin%2Fbodyclose) 这个包，可以用来检测 HTTP 响应主体是否关闭，使用方法：
+
+```go
+go vet -vettool=$(which bodyclose) github.com/timakin/go_api/...
+```
+
+#### 配置在 goland 中使用
+
+#### ![img](imgs\1656074-249f4acc8e8aaa90.png)
 
 ### 避免使用 `init()`
 
