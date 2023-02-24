@@ -1665,50 +1665,30 @@ func loadConfig() Config {
 
 ### 追加时优先指定切片容量
 
-追加时优先指定切片容量
+对于后续会追加元素的切片，初始化的时候，要尽可能为`make()`提供一个容量值。
 
-在尽可能的情况下，在初始化要追加的切片时为`make()`提供一个容量值。
-
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 for n := 0; n < b.N; n++ {
   data := make([]int, 0)
   for k := 0; k < size; k++{
     data = append(data, k)
   }
 }
-```
+// BenchmarkBad-4    100000000    2.48s
 
-</td><td>
-
-```go
+// Good
 for n := 0; n < b.N; n++ {
   data := make([]int, 0, size)
   for k := 0; k < size; k++{
     data = append(data, k)
   }
 }
+// BenchmarkGood-4   100000000    0.21s
 ```
 
-</td></tr>
-<tr><td>
-
-```
-BenchmarkBad-4    100000000    2.48s
-```
-
-</td><td>
-
-```
-BenchmarkGood-4   100000000    0.21s
-```
-
-</td></tr>
-</tbody></table>
+猜测可能是动态扩容比较耗费时间，影响性能。
 
 ### 主函数退出方式 (Exit)
 
