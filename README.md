@@ -973,9 +973,7 @@ if !ok {
 
 > 网络中，一个或少数几个节点或连线的失效，会通过节点之间的耦合关系引发其他节点也发生失效，进而产生级联效应，最终导致相当一部分节点甚至整个网络的崩溃，这种现象就称为级联失效，有时也形象称之为“雪崩”
 
-panic 是 [级联失败] 的主要根源 。如果发生错误，该函数必须返回错误，并允许调用方决定如何处理它。
-
-[级联失败]: https://en.wikipedia.org/wiki/Cascading_failure
+panic 是 `级联失败` 的主要根源 。如果发生错误，该函数必须返回错误，并允许调用方决定如何处理它。
 
 
 ```go
@@ -1688,23 +1686,21 @@ for n := 0; n < b.N; n++ {
 // BenchmarkGood-4   100000000    0.21s
 ```
 
-猜测可能是动态扩容比较耗费时间，影响性能。
+切片实际上是管理底层数组的一种奇妙方式。它会自动追踪大小，并根据需要重新分配新空间。
+
+当追加到切片后，运行库在每次超过当前容量时都会使其容量加倍。它必须复制所有元素才能做到这一点。如果在开始之前就知道它会有多大，那么可以通过预先获取它们来避免一些复制操作和内存分配。
+
+当make个提供容量的切片时，设置的是initial capacity，而不是任何类型的limit。
 
 ### 主函数退出方式 (Exit)
 
-Go 程序使用 [`os.Exit`] 或者 [`log.Fatal*`] 立即退出 (使用`panic`不是退出程序的好方法，请 [不要使用 panic](#不要使用-panic)。)
+Go 程序使用 `os.Exit`或者 `log.Fatal*`立即退出 (使用`panic`不是退出程序的好方法，请 [不要使用 panic](#不要使用-panic)。)
 
-[`os.Exit`]: https://golang.org/pkg/os/#Exit
-[`log.Fatal*`]: https://golang.org/pkg/log/#Fatal
+**仅在`main()`** 中调用 `os.Exit` 或者 `log.Fatal*`其中一个。所有其他函数应将错误返回到信号失败中。
 
-**仅在`main()`** 中调用其中一个 `os.Exit` 或者 `log.Fatal*`。所有其他函数应将错误返回到信号失败中。
-
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 func main() {
   body := readFile(path)
   fmt.Println(body)
@@ -1712,6 +1708,7 @@ func main() {
 func readFile(path string) string {
   f, err := os.Open(path)
   if err != nil {
+    // 在main中调用
     log.Fatal(err)
   }
   b, err := os.ReadAll(f)
@@ -1720,11 +1717,8 @@ func readFile(path string) string {
   }
   return string(b)
 }
-```
 
-</td><td>
-
-```go
+// Good
 func main() {
   body, err := readFile(path)
   if err != nil {
@@ -1745,25 +1739,19 @@ func readFile(path string) (string, error) {
 }
 ```
 
-</td></tr>
-</tbody></table>
-
 原则上：退出的具有多种功能的程序存在一些问题：
 
 - 不明显的控制流：任何函数都可以退出程序，因此很难对控制流进行推理。
 - 难以测试：退出程序的函数也将退出调用它的测试。这使得函数很难测试，并引入了跳过 `go test` 尚未运行的其他测试的风险。
-- 跳过清理：当函数退出程序时，会跳过已经进入`defer`队列里的函数调用。这增加了跳过重要清理任务的风险。
+- 跳过清理：当函数退出程序时，会跳过已经进入`defer`队列里的函数调用。如果其中包含了重要的清理任务，会增加跳过这些任务的风险。
 #### 一次性退出
 
-如果可能的话，你的`main（）`函数中 **最多一次** 调用 `os.Exit`或者`log.Fatal`。如果有多个错误场景停止程序执行，请将该逻辑放在单独的函数下并从中返回错误。
-这会缩短 `main()` 函数，并将所有关键业务逻辑放入一个单独的、可测试的函数中。
+如果可能的话，你的`main()`函数中 **最多一次** 调用 `os.Exit`或者`log.Fatal`。如果有多个错误场景导致程序停止执行，请将该逻辑放在单独的函数下，并从中返回错误。
+这会帮助缩短 `main()` 函数，并将所有关键业务逻辑放入一个单独的、可测试的函数中。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 package main
 func main() {
   args := os.Args[1:]
@@ -1784,11 +1772,8 @@ func main() {
   }
   // ...
 }
-```
 
-</td><td>
-
-```go
+// Good
 package main
 func main() {
   if err := run(); err != nil {
@@ -1814,20 +1799,13 @@ func run() error {
 }
 ```
 
-</td></tr>
-</tbody></table>
-
 ### 在序列化结构中使用字段标记
 
-任何序列化到JSON、YAML、，
-或其他支持基于标记的字段命名的格式应使用相关标记进行注释。
+任何序列化到json、yaml或其他支持基于标记的字段命名的格式，应使用相关标记进行注释。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 type Stock struct {
   Price int
   Name  string
@@ -1836,11 +1814,8 @@ bytes, err := json.Marshal(Stock{
   Price: 137,
   Name:  "UBER",
 })
-```
 
-</td><td>
-
-```go
+// Good
 type Stock struct {
   Price int    `json:"price"`
   Name  string `json:"name"`
@@ -1852,9 +1827,6 @@ bytes, err := json.Marshal(Stock{
 })
 ```
 
-</td></tr>
-</tbody></table>
-
 理论上：
 结构的序列化形式是不同系统之间的契约。
 对序列化表单结构（包括字段名）的更改会破坏此约定。在标记中指定字段名使约定明确，
@@ -1862,14 +1834,12 @@ bytes, err := json.Marshal(Stock{
 
 ### 不要一劳永逸地使用 goroutine
 
-Goroutines 是轻量级的，但它们不是免费的：
-至少，它们会为堆栈和 CPU 的调度消耗内存。
-虽然这些成本对于 Goroutines 的使用来说很小，但当它们在没有受控生命周期的情况下大量生成时会导致严重的性能问题。
-具有非托管生命周期的 Goroutines 也可能导致其他问题，例如防止未使用的对象被垃圾回收并保留不再使用的资源。
+Goroutines 是轻量级的，但它们不是免费的：至少，它们会为堆栈和 CPU 的调度消耗内存。
+虽然这些成本对于 Goroutines 的使用来说很小，但当它们在生命周期没有受控的情况下大量生成时，会导致严重的性能问题。
+具有非托管生命周期的 Goroutines 也可能导致其他问题，例如防止未使用的对象被垃圾回收、保留不再使用的资源等。
 
 因此，不要在代码中泄漏 goroutine。
-使用 [go.uber.org/goleak](https://pkg.go.dev/go.uber.org/goleak)
-来测试可能产生 goroutine 的包内的 goroutine 泄漏。
+使用 [go.uber.org/goleak](https://pkg.go.dev/go.uber.org/goleak)来测试可能产生 goroutine 的包内的 goroutine 泄漏。
 
 一般来说，每个 goroutine:
 
@@ -1880,23 +1850,18 @@ Goroutines 是轻量级的，但它们不是免费的：
 
 For example:
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
+// 没有办法阻止这个 goroutine。它将一直运行到应用程序退出。
 go func() {
   for {
     flush()
     time.Sleep(delay)
   }
 }()
-```
 
-</td><td>
-
-```go
+// Good
 var (
   stop = make(chan struct{}) // 告诉 goroutine 停止
   done = make(chan struct{}) // 告诉我们 goroutine 退出了
@@ -1914,28 +1879,16 @@ go func() {
     }
   }
 }()
+// 这个 goroutine 可以用 close(stop) 退出,
+// 我们可以等待它退出 <-done
 // 其它...
 close(stop)  // 指示 goroutine 停止
 <-done       // and wait for it to exit
 ```
 
-</td></tr>
-<tr><td>
-
-没有办法阻止这个 goroutine。这将一直运行到应用程序退出。
-
-</td><td>
-
-这个 goroutine 可以用 `close(stop)`,
-我们可以等待它退出 `<-done`.
-
-</td></tr>
-</tbody></table>
-
 #### 等待 goroutines 退出
 
-给定一个由系统生成的 goroutine，
-必须有一种方案能等待 goroutine 的退出。
+给定一个由系统生成的 goroutine，必须有一种方案能等待 goroutine 的退出。
 有两种常用的方法可以做到这一点：
 
 - 使用 `sync.WaitGroup`.
@@ -1971,19 +1924,16 @@ close(stop)  // 指示 goroutine 停止
 
 #### 不要在 `init()` 使用 goroutines 
 
-`init()` 函数不应该产生 goroutines。
-另请参阅 [避免使用 init()](#避免使用-init)。
+`init()` 函数不应该产生 goroutines。另请参阅 [避免使用 init()](#避免使用-init)。
 
-如果一个包需要一个后台 goroutine，
-它必须公开一个负责管理 goroutine 生命周期的对象。
+如果一个包需要一个后台 goroutine，它必须公开一个负责管理 goroutine 生命周期的对象。
 该对象必须提供一个方法（`Close`、`Stop`、`Shutdown` 等）来指示后台 goroutine 停止并等待它的退出。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
+// 当用户导入这个包时，无条件地生成一个后台 goroutine。
+// 用户无法控制 goroutine 或停止它的方法。
 func init() {
   go doWork()
 }
@@ -1992,11 +1942,11 @@ func doWork() {
     // ...
   }
 }
-```
 
-</td><td>
-
-```go
+// Good
+// 仅当用户请求时才生成worker。
+// 提供一种关闭 dowork 的方法，以便用户可以释放 worker 使用的资源。
+// 请注意，如果 worker 管理多个 goroutine，则应使用 WaitGroup
 type Worker struct{ /* ... */ }
 func NewWorker(...) *Worker {
   w := &Worker{
@@ -2021,24 +1971,6 @@ func (w *Worker) Shutdown() {
   <-w.done
 }
 ```
-
-</td></tr>
-<tr><td>
-
-当用户导出这个包时，无条件地生成一个后台 goroutine。
-用户无法控制 goroutine 或停止它的方法。
-
-</td><td>
-
-仅当用户请求时才生成工作人员。
-提供一种关闭工作器的方法，以便用户可以释放工作器使用的资源。
-
-请注意，如果工作人员管理多个 goroutine，则应使用`WaitGroup`。
-请参阅 [等待 goroutines 退出](#等待-goroutines-退出)。
-
-
-</td></tr>
-</tbody></table>
 
 ## 性能
 
