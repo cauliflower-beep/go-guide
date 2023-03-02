@@ -2676,10 +2676,12 @@ func f(list []int) {
   // Good
   var nums []int
   
+  ```
+
 if add1 {
     nums = append(nums, 1)
 }
-  
+
   if add2 {
   nums = append(nums, 2)
   }
@@ -2693,7 +2695,7 @@ if add1 {
 如果有可能，尽量缩小变量作用范围。除非它与 [减少嵌套](#减少嵌套)的规则冲突。
 
 
-```go
+​```go
 // Bad
 err := os.WriteFile(name, data, 0644)
 if err != nil {
@@ -2704,7 +2706,7 @@ if err != nil {
 if err := os.WriteFile(name, data, 0644); err != nil {
  return err
 }
-```
+  ```
 
 如果需要在 if 之外使用函数调用的结果，则不应尝试缩小范围。
 
@@ -2982,12 +2984,9 @@ $ go vet -printfuncs=wrapf,statusf
 
 [subtests]: https://blog.golang.org/subtests
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 // func TestSplitHostPort(t *testing.T)
 
 host, port, err := net.SplitHostPort("192.0.2.0:8000")
@@ -3009,11 +3008,8 @@ host, port, err = net.SplitHostPort("1:8")
 require.NoError(t, err)
 assert.Equal(t, "1", host)
 assert.Equal(t, "8", port)
-```
 
-</td><td>
-
-```go
+// Good
 // func TestSplitHostPort(t *testing.T)
 
 tests := []struct{
@@ -3052,9 +3048,6 @@ for _, tt := range tests {
   })
 }
 ```
-
-</td></tr>
-</tbody></table>
 
 很明显，使用 test table 的方式在代码逻辑扩展的时候，比如新增 test case，都会显得更加的清晰。
 
@@ -3102,12 +3095,9 @@ for _, tt := range tests {
 
 将此模式用于您需要扩展的构造函数和其他公共 API 中的可选参数，尤其是在这些功能上已经具有三个或更多参数的情况下。
 
-<table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
-<tbody>
-<tr><td>
 
 ```go
+// Bad
 // package db
 
 func Open(
@@ -3117,11 +3107,8 @@ func Open(
 ) (*Connection, error) {
   // ...
 }
-```
 
-</td><td>
-
-```go
+// Good
 // package db
 
 type Option interface {
@@ -3145,9 +3132,6 @@ func Open(
 }
 ```
 
-</td></tr>
-<tr><td>
-
 必须始终提供缓存和记录器参数，即使用户希望使用默认值。
 
 ```go
@@ -3156,8 +3140,6 @@ db.Open(addr, db.DefaultCache, log)
 db.Open(addr, false /* cache */, zap.NewNop())
 db.Open(addr, false /* cache */, log)
 ```
-
-</td><td>
 
 只有在需要时才提供选项。
 
@@ -3171,9 +3153,6 @@ db.Open(
   db.WithLogger(log),
 )
 ```
-
-</td></tr>
-</tbody></table>
 
 我们建议实现此模式的方法是使用一个 `Option` 接口，该接口保存一个未导出的方法，在一个未导出的 `options` 结构上记录选项。
 
